@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CascadeGuard — Crisis risk investigation</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{
+  --ink:#162332;--muted:#617385;--faint:#8494a3;--paper:#f5f8fb;--card:#fff;
+  --line:#dce5ec;--blue:#176b82;--blue-dark:#104c60;--teal:#16a085;
+  --amber:#b86b12;--red:#c94c50;--shadow:0 12px 32px rgba(22,35,50,.08)
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--paper);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button,input{font:inherit}button{cursor:pointer}
+.app{min-height:100vh}
+.topbar{height:76px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 clamp(20px,4vw,64px);gap:22px}
+.brand{display:flex;align-items:center;gap:12px;min-width:max-content}
+.logo{width:40px;height:40px;border-radius:12px;background:var(--blue);color:#fff;display:grid;place-items:center;font-size:21px;box-shadow:0 5px 12px rgba(23,107,130,.2)}
+.brand strong{display:block;font-size:18px;letter-spacing:-.02em}.brand span{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.top-status{display:flex;align-items:center;color:var(--muted);font-size:13px}.dot{width:9px;height:9px;border-radius:50%;background:#aab7c2;margin-right:8px}.top-status.live .dot{background:var(--teal);box-shadow:0 0 0 4px rgba(22,160,133,.12)}
+.page{width:min(1440px,calc(100% - 40px));margin:0 auto;padding:34px 0 56px}
+.hero{max-width:1000px;margin:0 auto 28px;text-align:center}.eyebrow{color:var(--blue);font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}.hero h1{font-size:clamp(30px,4vw,48px);line-height:1.08;letter-spacing:-.045em;margin:10px 0 10px}.hero p{max-width:700px;margin:0 auto;color:var(--muted);font-size:16px;line-height:1.55}
+.prompt-card{margin-top:24px;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:var(--shadow)}
+.prompt-label{display:block;font-size:13px;font-weight:800;margin-bottom:9px}.prompt-row{display:flex;gap:10px}.prompt-row input{flex:1;min-width:0;height:52px;border:1px solid #c9d6e0;border-radius:11px;padding:0 15px;color:var(--ink);font-size:15px;outline:none;background:#fbfdff}.prompt-row input:focus{border-color:var(--blue);box-shadow:0 0 0 4px rgba(23,107,130,.1)}
+.btn{border:0;border-radius:11px;height:52px;padding:0 20px;font-weight:800;font-size:14px}.primary{background:var(--blue);color:#fff}.primary:hover{background:var(--blue-dark)}.secondary{background:#fff;border:1px solid #c9d6e0;color:var(--muted)}.secondary:hover{border-color:var(--blue);color:var(--blue)}
+.hint{font-size:12px;color:var(--faint);margin-top:9px;line-height:1.4}.examples{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin-top:13px}.examples-label{font-size:12px;color:var(--faint);margin-right:2px}.example{border:1px solid #d6e1e8;border-radius:999px;background:#f7fafc;color:#456276;padding:6px 10px;font-size:12px}.example:hover{border-color:var(--blue);color:var(--blue)}
+.workspace{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(350px,.65fr);gap:22px;align-items:start}.maincol,.sidecol{display:grid;gap:22px;min-width:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}.card-head{padding:19px 22px 15px;border-bottom:1px solid #e9eef2;display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.card-title{font-size:17px;font-weight:850;letter-spacing:-.015em}.card-sub{font-size:13px;color:var(--muted);margin-top:4px;line-height:1.45}.metric{font-size:13px;font-weight:750;color:var(--blue);white-space:nowrap}
+.result-card{padding:22px}.result-top{display:flex;align-items:flex-start;justify-content:space-between;gap:20px}.result-top h2{font-size:28px;line-height:1.12;letter-spacing:-.03em;margin:4px 0 6px}.meta{font-size:13px;color:var(--muted);line-height:1.5}.badge{display:inline-flex;align-items:center;border-radius:999px;padding:7px 11px;font-size:11px;font-weight:850;letter-spacing:.07em;text-transform:uppercase}.badge.green{color:#14745f;background:#e8f7f1}.badge.red{color:#9f3338;background:#fdeced}.badge.orange{color:#93540c;background:#fff3dd}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:22px}.stat{background:#f6f9fb;border:1px solid #e4ecf1;border-radius:11px;padding:13px}.stat small{display:block;color:var(--muted);font-size:11px;font-weight:700}.stat b{display:block;margin-top:5px;font-size:22px;color:var(--ink)}
+.result-summary{margin-top:18px;padding:14px 16px;border-left:4px solid var(--blue);border-radius:4px;background:#f2f8fa;color:#405b6d;font-size:14px;line-height:1.55}
+.ranked .rank-list{padding:14px 16px 18px;display:grid;gap:12px;max-height:720px;overflow:auto}.rank-card{border:1px solid #dce6ed;border-radius:13px;padding:17px;background:#fff;cursor:pointer;transition:box-shadow .15s,border-color .15s,transform .15s}.rank-card:hover{border-color:#83b5c3;box-shadow:0 6px 18px rgba(23,107,130,.08);transform:translateY(-1px)}.rank-card.selected{border:2px solid var(--blue);padding:16px;background:#f8fcfd}.rank-top{display:flex;align-items:center;justify-content:space-between;gap:10px}.rank-num{font-size:11px;color:var(--muted);font-weight:800;letter-spacing:.07em;text-transform:uppercase}.priority{font-size:12px;font-weight:800;color:var(--blue-dark);background:#e7f3f6;border-radius:7px;padding:6px 8px}.rank-card h3{font-size:18px;margin:12px 0 6px;letter-spacing:-.02em}.mechanism{font-size:14px;line-height:1.5;color:#526777}.rank-where,.rank-action{font-size:13px;line-height:1.5;margin-top:13px;color:#304a5d}.rank-action{color:#234d5b}.fact-key{display:inline-block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:850;padding:3px 6px;border-radius:5px;margin-right:6px;vertical-align:1px}.fact-key.observed{color:#14745f;background:#e7f7f0}.fact-key.inference{color:#93540c;background:#fff1d7}.meter-row{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:16px}.meter-label{display:flex;justify-content:space-between;color:var(--muted);font-size:11px;font-weight:700}.meter-label b{color:var(--ink)}.bar{height:6px;border-radius:99px;background:#e8eef2;margin-top:6px;overflow:hidden}.bar span{display:block;height:100%;background:var(--blue);border-radius:inherit}
+.chain-panel .chain-wrap{padding:22px;overflow:auto}.chain-view{display:flex;align-items:stretch;gap:10px;min-width:max-content}.node{width:180px;border:1px solid #cddde5;border-radius:12px;padding:13px;background:#f9fbfc}.node.confirmed{border-color:#67b99f;background:#f1fbf7}.node.inference{border-color:#9bbbd0;background:#f4f9fc}.node.unknown{border-color:#e1b982;background:#fffaf1}.node small{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}.node strong{display:block;font-size:14px;margin-top:7px;line-height:1.3}.node p{font-size:12px;color:var(--muted);line-height:1.4;margin:7px 0 0}.arrow{align-self:center;color:#8aa0af;font-size:24px}.chain-action{min-width:280px;max-width:390px;border:1px solid #cddde5;border-radius:12px;padding:13px;background:#f8fbfc}.chain-action p{font-size:13px;line-height:1.5;color:#385568;margin:7px 0 13px}
+.mini-map{height:390px;position:relative;background:#dfe9ed}.mini-map #map{height:100%;width:100%}.map-label{position:absolute;z-index:500;left:14px;top:14px;background:rgba(255,255,255,.94);border:1px solid #d5e0e6;border-radius:9px;padding:9px 11px;box-shadow:0 4px 12px rgba(22,35,50,.1);font-size:12px}.map-label strong{display:block;font-size:13px}.map-label span{display:block;color:var(--muted);margin-top:3px;max-width:230px;line-height:1.35}
+.action{padding:20px}.action-icon{width:44px;height:44px;border-radius:12px;background:#e7f3f6;color:var(--blue);display:grid;place-items:center;font-size:22px;margin-bottom:13px}.action h3{font-size:18px;line-height:1.3;margin:0 0 8px}.action p{font-size:14px;color:#526b7b;line-height:1.55;margin:0}.action-where{margin-top:15px;padding-top:14px;border-top:1px solid #e5edf1;color:#315568;font-size:13px;line-height:1.5}.action-basis{margin-top:10px;color:var(--faint);font-size:12px;line-height:1.45}
+.overview{padding:20px}.overview h1{font-size:25px;line-height:1.15;letter-spacing:-.025em;margin:7px 0 6px}.pills{display:flex;flex-wrap:wrap;gap:7px;margin-top:13px}.pill{font-size:12px;padding:6px 9px;border:1px solid #d9e5eb;border-radius:999px;color:#496376;background:#f8fbfc}.pill.good{color:#14745f;border-color:#bfe5d7;background:#effaf6}
+.agent-stream{padding:18px 20px;max-height:300px;overflow:auto}.trace{display:grid;gap:13px}.trace-line{display:grid;grid-template-columns:10px 1fr;gap:10px}.trace-dot{width:8px;height:8px;border-radius:50%;background:var(--blue);margin-top:5px}.trace-line strong{font-size:11px;letter-spacing:.06em;text-transform:uppercase}.trace-line p{font-size:13px;color:var(--muted);line-height:1.45;margin:3px 0 0}.agent-footer{padding:12px 20px;border-top:1px solid #e9eef2;color:var(--faint);font-size:11px}
+.loading{position:absolute;inset:0;display:none;place-items:center;background:rgba(255,255,255,.68);z-index:700}.loading.show{display:grid}.spinner{width:38px;height:38px;border:4px solid #cfe0e6;border-top-color:var(--blue);border-radius:50%;animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+.empty{padding:25px;text-align:center;color:var(--muted);font-size:14px}
+@media(max-width:1100px){.page{width:min(100% - 28px,900px)}.workspace{grid-template-columns:1fr}.sidecol{grid-template-columns:1fr 1fr;align-items:start}.sidecol .ranked{grid-column:1/-1}.ranked .rank-list{max-height:none}}
+@media(max-width:700px){.topbar{height:auto;min-height:70px;padding:14px 18px;align-items:flex-start}.top-status{margin-top:11px}.brand span{display:none}.page{width:calc(100% - 24px);padding:24px 0 40px}.hero{text-align:left;margin-bottom:22px}.hero h1{font-size:32px}.hero p{font-size:14px}.prompt-card{padding:14px}.prompt-row{display:grid;grid-template-columns:1fr 1fr}.prompt-row input{grid-column:1/-1}.prompt-row .primary{grid-column:1}.prompt-row .secondary{grid-column:2}.workspace{gap:16px}.maincol,.sidecol{gap:16px}.sidecol{display:grid;grid-template-columns:1fr}.sidecol .ranked{grid-column:auto}.card-head{padding:16px}.result-card{padding:17px}.result-top h2{font-size:23px}.stats{gap:7px}.stat{padding:10px}.stat b{font-size:19px}.stat small{font-size:10px}.mini-map{height:310px}.rank-card{padding:14px}.rank-card.selected{padding:13px}.rank-card h3{font-size:17px}.meter-row{gap:10px}.chain-panel .chain-wrap{padding:16px}.hero .examples{display:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand"><div class="logo">⚡</div><div><strong>CascadeGuard</strong><span>Disaster cascade investigation</span></div></div>
+    <div id="status" class="top-status"><span class="dot"></span><span>Ready to investigate</span></div>
+  </header>
+
+  <div class="page">
+    <section class="hero">
+      <div class="eyebrow">Operational intelligence for public agencies</div>
+      <h1>See what could happen next.</h1>
+      <p>Describe a place and concern in plain language. CascadeGuard finds the relevant event, ranks the most important cascading risks, and points government teams to the first action to verify.</p>
+      <div class="prompt-card">
+        <label class="prompt-label" for="prompt">What should we investigate?</label>
+        <div class="prompt-row">
+          <input id="prompt" value="Find all major cascading risks in Kathmandu, Nepal and tell me where intervention matters most." placeholder="Try: Flood risks around Dhaka, Bangladesh">
+          <button id="run" class="btn primary">Investigate</button>
+          <button id="reset" class="btn secondary">Reset</button>
+        </div>
+        <div class="hint">You can name a city, region or country and a hazard—or ask for all major cascading risks.</div>
+        <div class="examples"><span class="examples-label">Try an example:</span><button class="example" data-prompt="Find flood cascading risks in Dhaka, Bangladesh">Floods in Dhaka</button><button class="example" data-prompt="Find earthquake cascading risks in Kathmandu, Nepal">Earthquake in Kathmandu</button><button class="example" data-prompt="Find all major cascading risks in Manila, Philippines">All risks in Manila</button></div>
+      </div>
+    </section>
+
+    <div class="workspace">
+      <main class="maincol">
+        <section class="card result-card">
+          <div class="result-top"><div><div class="eyebrow">Current investigation</div><h2 id="eventName">Ready when you are</h2><div class="meta" id="eventMeta">Enter a prompt above to start an investigation.</div></div><div id="alert" class="badge green">READY</div></div>
+          <div class="stats"><div class="stat"><small>Disaster events</small><b id="eventCount">—</b></div><div class="stat"><small>Ranked crisis risks</small><b id="cascadeCount">—</b></div><div class="stat"><small>Top priority</small><b id="topPriority">—</b></div></div>
+          <div id="resultSummary" class="result-summary">Your operational situation summary will appear here after the investigation completes.</div>
+        </section>
+
+        <section class="card ranked">
+          <div class="card-head"><div><div class="card-title">Ranked crisis risks</div><div class="card-sub">Start with the highest priority. Select any card to inspect its chain.</div></div><div class="metric" id="rankNote">—</div></div>
+          <div class="rank-list" id="rankList"><div class="empty">Run an investigation to generate ranked risks.</div></div>
+        </section>
+
+        <section class="card chain-panel">
+          <div class="card-head"><div><div class="card-title">How the selected risk could cascade</div><div class="card-sub" id="selectedSub">Select a ranked risk to see the dependency chain.</div></div><div class="metric" id="selectedMetric">—</div></div>
+          <div class="chain-wrap"><div class="chain-view" id="chain"><div class="empty">No risk selected yet.</div></div></div>
+        </section>
+      </main>
+
+      <aside class="sidecol">
+        <section class="card">
+          <div class="card-head"><div><div class="card-title">Investigation map</div><div class="card-sub" id="aoiTitle">Location will appear here</div></div></div>
+          <div class="mini-map"><div id="map"></div><div class="map-label"><strong id="locationName">Waiting for a location</strong><span id="aoiMeta">The map will update after you investigate.</span></div><div id="loading" class="loading"><div class="spinner"></div></div></div>
+          <div class="overview"><div class="meta" id="locationMeta">Enter a city, region or country in the prompt.</div><div class="pills" id="hazardPills"><span class="pill">No hazards selected</span></div><div class="pills" id="eventPills"></div></div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><div><div class="card-title">Highest-priority government action</div><div class="card-sub">The first operational step from the top-ranked risk.</div></div></div>
+          <div class="action"><div class="action-icon">↗</div><h3 id="interventionTitle">Awaiting analysis</h3><p id="interventionReason">CascadeGuard will identify the strongest action after comparing the risks.</p><div id="interventionWhere" class="action-where"></div><div id="interventionBasis" class="action-basis"></div></div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><div><div class="card-title">Live investigation steps</div><div class="card-sub">What the system is doing, in plain language.</div></div><div class="metric" id="agentState">Idle</div></div>
+          <div class="agent-stream"><div class="trace" id="trace"><div class="empty">Waiting for an investigation.</div></div></div>
+          <div class="agent-footer">Resolve location → investigate → rank risks → recommend action</div>
+        </section>
+      </aside>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+let map=null,layers=[],lastResult=null,currentCascade=null;
+function esc(v){return String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;')}
+function pct(v){return Math.round(Math.max(0,Math.min(1,Number(v)||0))*100)}
+function status(msg,live=false){$('status').className='top-status'+(live?' live':'');$('status').innerHTML=`<span class="dot"></span><span>${esc(msg)}</span>`}
+function initMap(){map=L.map('map',{zoomControl:false,attributionControl:true}).setView([27.7,85.3],7);L.control.zoom({position:'bottomright'}).addTo(map);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OpenStreetMap contributors'}).addTo(map)}
+function clearLayers(){layers.forEach(x=>map.removeLayer(x));layers=[]}
+function addPoint(lat,lon,label,color){if(lat==null||lon==null)return;const m=L.circleMarker([lat,lon],{radius:8,color,fillColor:color,fillOpacity:.9,weight:2});m.bindPopup(`<b>${esc(label)}</b>`).addTo(map);layers.push(m)}
+function renderMap(result){clearLayers();const loc=result.location||{};if(loc.latitude!=null)addPoint(loc.latitude,loc.longitude,'Requested location','#176b82');for(const e of result.selected_events||[]){addPoint(e.latitude,e.longitude,`${e.hazard||e.event_type} · ${e.event_id}`,'#c94c50')}const g=result.aoi?.geometry;if(g){try{const l=L.geoJSON(g,{style:{color:'#176b82',weight:2,fillOpacity:.08,dashArray:'6 7'}}).addTo(map);layers.push(l);map.fitBounds(l.getBounds().pad(.16));return}catch(_){}}if(loc.latitude!=null)map.setView([loc.latitude,loc.longitude],9)}
+function renderTrace(items){$('trace').innerHTML=(items||[]).map(x=>`<div class="trace-line"><div class="trace-dot"></div><div><strong>${esc(x.type||'step')}</strong><p>${esc(x.message||'Action recorded')}</p></div></div>`).join('')||'<div class="empty">No investigation steps returned.</div>';const box=document.querySelector('.agent-stream');if(box)box.scrollTop=box.scrollHeight}
+function pushTrace(item){const el=document.createElement('div');el.className='trace-line';el.innerHTML=`<div class="trace-dot"></div><div><strong>${esc(item.type||'step')}</strong><p>${esc(item.message||'Action recorded')}</p></div>`;const trace=$('trace');if(trace.children.length===1&&trace.firstElementChild.textContent.includes('Waiting for an investigation'))trace.innerHTML='';trace.appendChild(el);const box=document.querySelector('.agent-stream');if(box)box.scrollTop=box.scrollHeight}
+function renderOverview(result){const l=result.location||{};$('locationName').textContent=l.display_name||'Investigation area';$('locationMeta').textContent=[result.mode==='city_scan'?'Multi-hazard city scan':'Hazard investigation',l.address?.country].filter(Boolean).join(' · ');$('hazardPills').innerHTML=(result.requested_hazards||[]).map(h=>`<span class="pill good">${esc(h)}</span>`).join('')||'<span class="pill">No hazards</span>';$('eventPills').innerHTML=(result.selected_events||[]).map(e=>`<span class="pill">${esc(e.hazard||e.event_type)} · ${esc(e.event_id)}${e.distance_km!=null?' · '+esc(e.distance_km)+' km':''}</span>`).join('')}
+function renderHeader(result){const events=result.selected_events||[],cs=result.cascades||[];$('eventCount').textContent=events.length;$('cascadeCount').textContent=cs.length;$('topPriority').textContent=cs.length?Math.round(cs[0].priority_score):'—';$('eventName').textContent=events.map(e=>e.hazard||e.event_type).join(' + ')||'CascadeGuard crisis scan';$('eventMeta').textContent=events.length?events.map(e=>`${e.event_id} · ${e.distance_km??'location matched'}${e.distance_km!=null?' km':''}`).join('  |  '):'No matching GDACS event selected';const red=events.some(e=>String(e.alert_level).toLowerCase()==='red');$('alert').textContent=red?'RED RISK':'ANALYSIS';$('alert').className='badge '+(red?'red':'green');$('aoiTitle').textContent=result.aoi?.label||'Investigation area';$('aoiMeta').textContent=result.aoi?.description||'Mapped event and location view';$('resultSummary').textContent=result.summary||'No operational situation summary was returned.'}
+function renderRanked(result){const list=result.cascades||[];$('rankNote').textContent=list.length?`Top ${Math.round(list[0].priority_score)}/100`:'—';$('rankList').innerHTML=list.map((c,i)=>{const inv=c.intervention||{};return `<div class="rank-card ${i===0?'selected':''}" data-cid="${esc(c.id)}"><div class="rank-top"><span class="rank-num">#${i+1} · ${esc(c.hazard||'')}</span><span class="priority">Priority ${Math.round(c.priority_score)}</span></div><h3>${esc(c.title)}</h3><div class="mechanism">${esc(c.mechanism)}</div><div class="rank-where"><span class="fact-key observed">WHERE</span>${esc(inv.where||'Investigation area location not resolved')}</div><div class="rank-action"><span class="fact-key inference">GOVERNMENT ACTION</span>${esc(inv.action||'Verify the location and route before acting.')}</div><div class="meter-row"><div><div class="meter-label"><span>Confidence</span><b>${pct(c.confidence)}%</b></div><div class="bar"><span style="width:${pct(c.confidence)}%"></span></div></div><div><div class="meter-label"><span>Impact</span><b>${Math.round(c.impact_score)}/100</b></div><div class="bar"><span style="width:${Math.round(c.impact_score)}%"></span></div></div></div></div>`}).join('')||'<div class="empty">No crisis risks returned.</div>';document.querySelectorAll('.rank-card').forEach((el,i)=>el.addEventListener('click',()=>selectCascade(list[i])));if(list[0])selectCascade(list[0])}
+function renderOverall(result){const inv=result.overall_intervention||{};$('interventionTitle').textContent=inv.action||'No government action identified';$('interventionReason').textContent=inv.why||'The available data is not specific enough for an operational recommendation.';$('interventionWhere').textContent=inv.where?`WHERE / TARGET · ${inv.where}`:'';$('interventionBasis').textContent=inv.location_basis||'LOCATION BASIS · Mapped coordinates are shown; route connectivity and blockage require field verification.'}
+function selectCascade(c){if(!c)return;currentCascade=c;document.querySelectorAll('.rank-card').forEach(x=>x.classList.toggle('selected',x.dataset.cid===c.id));$('selectedSub').textContent=`${c.hazard||'Hazard'} · ${c.mechanism}`;$('selectedMetric').textContent=`Priority ${Math.round(c.priority_score)} · Confidence ${pct(c.confidence)}%`;const nodes=c.nodes||[];const inv=c.intervention||{};const action=inv.action||'Verify the chain before acting.';const where=inv.where||'Investigation area location not resolved';const chain=nodes.map((n,i)=>`${i?'<div class="arrow">→</div>':''}<div class="node ${esc(n.status)}"><small>${esc(n.role)} · ${esc(n.status)}</small><strong>${esc(n.label)}</strong><p>${esc(n.status==='confirmed'?'Observed or event-reported':'Operational interpretation')}</p></div>`).join('');$('chain').innerHTML=chain+`<div class="arrow">→</div><div class="chain-action"><span class="fact-key observed">OPERATIONAL LOCATION</span><p>${esc(where)}</p><span class="fact-key inference">GOVERNMENT ACTION</span><p>${esc(action)}</p></div>`}
+function renderResult(result){lastResult=result;renderOverview(result);renderHeader(result);renderMap(result);renderRanked(result);renderOverall(result);renderTrace(result.investigation_trace||[]);status('Investigation completed',true);$('agentState').textContent='Complete'}
+async function run(){const prompt=$('prompt').value.trim();if(!prompt){status('Enter a request');return}status('Investigating…',true);$('agentState').textContent='Running';$('run').disabled=true;$('loading').classList.add('show');$('trace').innerHTML='';lastResult=null;currentCascade=null;try{const r=await fetch('/api/investigate/prompt/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt})});if(!r.ok)throw new Error(await r.text()||`HTTP ${r.status}`);const reader=r.body.getReader();const decoder=new TextDecoder();let buffer='';while(true){const {value,done}=await reader.read();if(done)break;buffer+=decoder.decode(value,{stream:true});const chunks=buffer.split('\n\n');buffer=chunks.pop()||'';for(const chunk of chunks){const line=chunk.split('\n').find(x=>x.startsWith('data: '));if(!line)continue;const data=JSON.parse(line.slice(6));if(data.type==='result'){renderResult(data.data)}else if(data.type==='error'){throw new Error(data.message)}else{pushTrace(data);if(data.type==='started')status('Investigation in progress',true)}}}if(!lastResult)throw new Error('Investigation ended without a result')}catch(e){const message=e.message||'Investigation failed';status(message.includes('supported hazard')||message.includes('location')||message.includes('No recent')?'Clarification needed':'Investigation unavailable');$('agentState').textContent='Needs input';pushTrace({type:'clarification',message});$('resultSummary').textContent=message}finally{$('run').disabled=false;$('loading').classList.remove('show')}}
+$('run').addEventListener('click',run);$('prompt').addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter')run()});$('reset').addEventListener('click',()=>location.reload());document.querySelectorAll('.example').forEach(button=>button.addEventListener('click',()=>{$('prompt').value=button.dataset.prompt;$('prompt').focus()}));initMap();
+</script>
+</body>
+</html>
