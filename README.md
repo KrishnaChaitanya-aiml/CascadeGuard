@@ -1,86 +1,222 @@
 # CascadeGuard
 
-CascadeGuard is an evidence-grounded autonomous disaster-risk investigation system. A user describes the problem in plain language — for example, “Find all major cascading risks in Kathmandu, Nepal and tell me where intervention matters most.” The system resolves the location and relevant disaster events automatically, gathers live evidence, generates multiple candidate cascades, ranks them, and returns a decision-support intervention with explicit uncertainty.
+### Autonomous Cascading-Risk Investigation & Intervention System
 
-## User workflow
+> **Most systems tell you what happened. CascadeGuard investigates what could fail next — and where to intervene first.**
 
-`Plain-language prompt → intent/location resolution → relevant GDACS event discovery → city investigation area → live evidence → cascade hypotheses → deterministic scoring + Featherless/Qwen explanation → ranked risks → intervention → uncertainty`
+## Overview
 
-## What the user enters
+CascadeGuard is an autonomous AI system that investigates how a disaster can propagate through interconnected infrastructure and services.
 
-The user does **not** need to enter a GDACS event ID or choose a hazard. CascadeGuard can infer the requested hazard scope from the prompt. With a multi-hazard request, it searches the requested location for recent relevant GDACS events across the supported core hazards and investigates the matched events together.
+Instead of requiring users to manually identify disaster events, locations, APIs, or investigation areas, CascadeGuard accepts a natural-language request and autonomously:
 
-## Core data sources
+**identifies the relevant event → gathers real-world evidence → builds system context → generates multiple cascade hypotheses → verifies them → prioritizes risk → recommends interventions.**
 
-- **GDACS** — disaster event, alert level, reported impacts and event geometry when available. The published API exposes event retrieval and event-list endpoints.
-- **OpenStreetMap / Overpass** — mapped bridges, hospitals, roads, schools, shelters and airports around representative investigation zones. Public Overpass instances should be queried sparingly, with caching/rate limiting and no parallel overload.
-- **Open-Meteo Historical Weather** — precipitation, wind and related historical weather variables. Historical data is model/reanalysis based rather than a field measurement at every point.
-- **Open-Meteo Flood API** — river discharge context at roughly 5 km model resolution for flood investigations.
-- **WorldPop** — modeled population exposure enrichment for an investigation geometry.
-- **USGS** — earthquake corroboration/context via its FDSN event service.
-- **NOAA IBTrACS** — tropical-cyclone track/context for cyclone investigations.
-- **NASA FIRMS** — optional active-fire observations for wildfire investigations; a free MAP_KEY is required and the service has usage limits.
-- **Nominatim** — end-user-triggered location geocoding with caching and an identifying User-Agent. The public service has a strict usage policy and a maximum of 1 request/second.
+The objective is to turn fragmented disaster information into **evidence-backed, prioritized decision support**.
 
-## Why this is an agentic workflow
+---
 
-The model is not treated as the source of truth. External services provide observations; the backend constructs the evidence package, generates bounded cascade hypotheses, calculates numeric decision-support scores, and asks Featherless-hosted Qwen to refine the explanation. The interface shows safe operational trace events, not model chain-of-thought.
+## The Problem
 
-## Frontend
+Disasters rarely remain isolated events.
 
-The dashboard is designed for a single desktop viewport: the user enters one natural-language request, sees the resolved location and matched events, watches safe agent activity live, views the investigation area on a map, reviews ranked cascades, checks the main intervention point, and opens the evidence inspector without leaving the page.
-
-## Setup
-
-```powershell
-python -m venv .venv
-.venv\\Scripts\\Activate.ps1
-pip install -r requirements.txt
-```
-
-Create `.env` from `.env.example` and set:
+A flood can disrupt a bridge, the bridge can disrupt transportation, and transportation disruption can isolate communities or reduce access to critical services.
 
 ```text
-FEATHERLESS_API_KEY=YOUR_KEY
+Disaster
+   ↓
+Infrastructure disruption
+   ↓
+Connectivity loss
+   ↓
+Service disruption
+   ↓
+Secondary impact
 ```
 
-The distributable project intentionally contains no `.env` file or API keys.
-Featherless failures are surfaced in the live trace and the backend retains
-only deterministic, evidence-linked scoring; it never fabricates a source or
-observation.
+Existing disaster intelligence can tell us **what happened**. The harder problem is determining **what could fail next because systems are interconnected, how strongly that cascade is supported by evidence, and where intervention should happen first.**
 
-Optional providers:
+---
+
+## How CascadeGuard Works
 
 ```text
-FIRMS_MAP_KEY=YOUR_KEY
-RELIEFWEB_APPNAME=YOUR_APP_NAME
+Natural-Language Request
+          ↓
+   Event Identification
+          ↓
+  Investigation Area
+          ↓
+   Evidence Collection
+          ↓
+   Context & Dependency
+          ↓
+ Multiple Cascade Hypotheses
+          ↓
+ Evidence Verification
+          ↓
+ Risk Prioritization
+          ↓
+ Intervention per Cascade
+          ↓
+ Highest-Priority Intervention
 ```
 
-Run:
+CascadeGuard uses one investigation agent that coordinates multiple real-world data tools. The agent determines what information is needed, retrieves it, evaluates the resulting evidence, and continues the investigation based on what it discovers.
 
-```powershell
-uvicorn backend.main:app --reload
-```
+---
 
-Open `http://127.0.0.1:8000/`.
+## Core Intelligence
 
-## Main API
+### Context Construction
 
-- `GET /health`
-- `GET /api/events?event_type=FL`
-- `GET /api/events/{event_type}/{event_id}`
-- `GET /api/investigate/{event_type}/{event_id}`
-- `POST /api/investigate/prompt`
-- `POST /api/investigate/prompt/stream`
+CascadeGuard identifies relevant entities around the disaster—such as roads, bridges, hospitals, communities, supply routes, and environmental conditions—and models meaningful relationships between them.
 
-The streaming endpoint is used by the frontend for live operational updates.
+This creates a dependency-aware view of the affected system rather than treating each observation independently.
 
-## Safety and limitations
+### Cascade Analysis
 
-CascadeGuard is decision support, not an emergency command system. A mapped asset is not assumed to be damaged or operational. Weather observations are not treated as causal proof. Conflicting cumulative GDACS observations are preserved rather than summed. Priority/confidence/impact values are decision-support heuristics, not calibrated probabilities.
+The system explores multiple possible downstream failure pathways instead of producing a single generic prediction.
 
-If a prompt does not contain a reliably resolvable place and supported hazard,
-or if no relevant GDACS event can be found, the workflow stops with a
-clarification/unavailable message instead of guessing.
+Each cascade is treated as a **hypothesis** and evaluated against the available evidence.
 
-Public OSM services have resource and usage policies. Cache and rate-limit requests. Nominatim's public service is intended for moderate end-user-triggered use and requires an identifying User-Agent.
+### Risk Prioritization
+
+Cascades are evaluated using separate dimensions:
+
+- **Confidence** — strength of supporting evidence
+- **Impact** — potential severity
+- **Priority** — relative importance and urgency
+
+### Intervention Engine
+
+Every significant cascade receives a recommended intervention, including the target, rationale, and supporting evidence.
+
+CascadeGuard then identifies the **overall highest-priority intervention**—the intervention point with the greatest potential to reduce downstream risk.
+
+---
+
+## Evidence-First Design
+
+CascadeGuard is designed to avoid turning plausible AI reasoning into false facts.
+
+The system distinguishes between:
+
+**Observed** — directly supported by a source  
+**Inferred** — derived from observations  
+**Hypothesis** — a possible downstream outcome  
+**Unknown** — insufficient evidence
+
+For example, knowing that a bridge exists does **not** mean the bridge is damaged.
+
+Likewise, recorded rainfall does **not** automatically prove a specific infrastructure failure was caused by that rainfall.
+
+When evidence is insufficient, CascadeGuard reports uncertainty rather than fabricating an answer.
+
+---
+
+## Real-World Data
+
+Depending on the investigation, CascadeGuard can use real external sources including:
+
+- **GDACS** — disaster events and reported impacts
+- **OpenStreetMap / Overpass** — infrastructure and geographic context
+- **Open-Meteo** — weather observations
+- **Flood / river datasets** — hydrological context
+- **Population datasets** — exposure context
+- **USGS** — earthquake information
+- **NOAA IBTrACS** — cyclone information
+- **NASA FIRMS** — wildfire information
+
+The system uses hazard-aware data selection rather than querying every source for every investigation.
+
+---
+
+## Reliability
+
+CascadeGuard deliberately fails safely.
+
+Invalid or ambiguous requests do not produce fabricated disasters, locations, statistics, or conclusions.
+
+The system also surfaces:
+
+- missing data
+- conflicting sources
+- unavailable APIs
+- unverified conditions
+- evidence limitations
+
+This makes uncertainty an explicit part of the result rather than something hidden from the user.
+
+---
+
+## Dashboard
+
+The interface is designed as an operational investigation dashboard focused on five questions:
+
+**What happened?**  
+Current event and context.
+
+**What could fail next?**  
+Ranked cascade hypotheses.
+
+**Why do we believe it?**  
+Evidence and source provenance.
+
+**What should we do first?**  
+Highest-priority intervention.
+
+**What remains uncertain?**  
+Conflicts and data gaps.
+
+A live investigation trace shows observable agent actions without exposing hidden model reasoning.
+
+---
+
+## Technology
+
+- Python
+- FastAPI
+- Featherless.ai
+- Qwen open-weight model
+- OpenStreetMap / Overpass
+- GDACS
+- Open-Meteo
+- Leaflet
+- REST APIs
+- Structured evidence and validation
+
+---
+
+## Safety
+
+CascadeGuard is a **human decision-support system**.
+
+It does not autonomously dispatch emergency services, issue public warnings, control infrastructure, or perform physical interventions.
+
+Its recommendations are intended to help humans determine **where attention should be focused first**.
+
+---
+
+## Why CascadeGuard?
+
+The key shift is:
+
+> **From reporting isolated disaster information to investigating connected failure chains and prioritizing intervention.**
+
+CascadeGuard does not simply answer:
+
+> *“What happened?”*
+
+It investigates:
+
+> **“What could fail next, why do we believe it, and where can intervention have the greatest leverage?”**
+
+---
+
+## Project
+
+**CascadeGuard**  
+*Autonomous Cascading-Risk Investigation & Intervention System*
+
+Built for **HackWave 3.0 — Autonomous AI Workflows**.
